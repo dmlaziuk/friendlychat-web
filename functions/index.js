@@ -1,26 +1,59 @@
-/**
- * Copyright 2017 Google Inc. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-// Note: You will edit this file in the follow up codelab about the Cloud Functions for Firebase.
-
-// Import the Firebase SDK for Google Cloud Functions.
+const express = require('express');
+const cors = require('cors');
+const oauth2 = require('simple-oauth2');
 const functions = require('firebase-functions');
-// Import and initialize the Firebase Admin SDK.
 const admin = require('firebase-admin');
+
+const credentials = {
+  client: {
+    id: '2562268977431654',
+    secret: 'a845c90b3fc13a182c052dfcab42826a'
+  },
+  auth: {
+    tokenHost: 'https://api.instagram.com',
+    tokenPath: '/oauth/access_token'
+  }
+};
+
+const app = express();
+app.use(cors({ origin: false }));
 admin.initializeApp();
+
+app.get('/redirect', (req, res) => {
+  console.log('query:', req.query);
+  oauth2.create(credentials).authorizationCode.getToken({
+    code: req.query.code,
+    redirect_uri: `${req.protocol}://${req.get('host')}/instagram/redirect`
+  }).then(results => {
+    console.log('Auth code exchange received:', results);
+    // We have an Instagram access token and the user identity now.
+    const accessToken = results.access_token;
+    const instagramUserID = results.user.id;
+    const profilePic = results.user.profile_picture;
+    const userName = results.user.full_name;
+
+    // Create a Firebase account and get the Custom Auth Token.
+    // createFirebaseAccount(instagramUserID, userName, profilePic, accessToken).then(firebaseToken => {
+      // Serve an HTML page that signs the user in and updates the user profile.
+      // res.send(signInFirebaseTemplate(firebaseToken, userName, profilePic, accessToken));
+    // });
+    return res.send({});
+  }).catch(e => e);
+});
+
+app.get('/deauthorize', (req, res) => {
+  console.log('cookies state:', req.cookies);
+  console.log('query state:', req.query);
+  res.json({});
+});
+
+app.get('/delete', (req, res) => {
+  console.log('cookies state:', req.cookies);
+  console.log('query state:', req.query);
+  res.json({});
+});
+
+exports.instagram = functions.https.onRequest(app);
 
 // Adds a message that welcomes new users into the chat.
 exports.addWelcomeMessages = functions.auth.user().onCreate(async (user) => {
